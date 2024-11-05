@@ -1,0 +1,80 @@
+body {
+        margin: 0;
+        overflow: hidden;
+}
+
+
+canvas {
+        overflow: clip;
+        overflow-clip-margin: content-box;
+}
+
+
+.panel {
+        position: absolute;
+        height: 100px;
+        width: 100px;
+        background: white;
+
+
+        transition: ease 100ms;
+}
+
+
+
+.display {
+
+        /*NOTE: this is just to mark the element in js*/
+
+}
+
+
+#upper-left {
+
+        left: -100px;
+
+}
+
+.display-upper-left {
+
+        left: 0 !important;
+
+}
+
+
+#upper-right {
+
+        right: -100px;
+}
+
+.display-upper-right {
+
+        right: 0 !important;
+
+}
+
+#lower-left {
+
+        left: -100px;
+        bottom: 0;
+
+}
+
+.display-lower-left {
+
+        left: 0 !important;
+
+}
+
+#lower-right {
+
+        right: -100px;
+        bottom: 0;
+
+}
+
+.display-lower-right {
+
+        right: 0 !important;
+
+}
