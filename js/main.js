@@ -73,6 +73,22 @@ function CreateBoxNode(name, box, connections) {
 
 }
 
+function CreateButtonNode(name, button) {
+
+	return {
+
+		name: name,
+		button: button
+
+	}
+
+}
+
+function GetButtonName(button) {
+	let buttonName = button.name.replace("button-", "");
+	return buttonName;
+}
+
 let NAMES = {
 
 	upperLeft: "upper-left",
@@ -92,10 +108,12 @@ let NAMES = {
 let boxes = {};
 let clickableModels = [];
 
+let buttons = [];
+let buttonNodes = {};
 
 
 
-let geometry = loader.load("../models/object_test_3x3_path.fbx", function(o) {
+let geometry = loader.load("../models/object_test_buttons.fbx", function(o) {
 	console.log(o);
 
 	let models = o.children;
@@ -110,7 +128,13 @@ let geometry = loader.load("../models/object_test_3x3_path.fbx", function(o) {
 		let currentModel = models[i];
 		currentModel.material = new THREE.MeshBasicMaterial({ color: currentModel.material.color });
 
-		if (currentModel.name.charAt(0) !== "_") {
+		if (currentModel.name.includes("button")) {
+
+			let buttonName = GetButtonName(currentModel);
+			buttonNodes[buttonName] = CreateButtonNode(buttonName, currentModel);
+			buttons.push(currentModel);
+
+		} else if (currentModel.name.charAt(0) !== "_") {
 			boxes[currentModel.name] = CreateBoxNode(currentModel.name, currentModel, {});
 			clickableModels.push(currentModel);
 		}
@@ -275,6 +299,66 @@ function FindPaths(target, path) {
 
 }
 
+
+function FindPathFromNode(node) {
+	if (node && node !== activeNode) {
+
+		if (activeNode === null || node.name in activeNode.connections) {
+
+			targetNode = node;
+			targetPanel = targetNode.name;
+			HideAllPanels();
+
+			startingPosition.x = cube.position.x;
+			startingPosition.y = cube.position.y;
+
+			targetPosition.x = targetNode.box.position.x;
+			targetPosition.y = -targetNode.box.position.z;
+			currentTransitionTime = 0;
+
+		} else if (!(node.name in activeNode.connections)) {
+
+			let paths = FindPaths(node, [activeNode]);
+			let currentPath = [];
+
+			for (let i = 0; i < paths.length; i++) {
+
+				if (currentPath.length === 0 || paths[i].length < currentPath.length) {
+
+					currentPath = paths[i];
+
+				}
+
+			}
+
+			currentPath.reverse();
+			currentPath.pop();
+
+			targetPath = currentPath;
+
+			targetNode = targetPath.pop();
+			targetPanel = targetNode.name;
+			HideAllPanels();
+
+			startingPosition.x = cube.position.x;
+			startingPosition.y = cube.position.y;
+
+			targetPosition.x = targetNode.box.position.x;
+			targetPosition.y = -targetNode.box.position.z;
+			currentTransitionTime = 0;
+
+
+
+			console.log(paths);
+			console.log(currentPath);
+			console.log(targetNode);
+
+
+		}
+	}
+}
+
+
 function OnPointerDown(e) {
 
 	mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -283,68 +367,83 @@ function OnPointerDown(e) {
 	raycaster.setFromCamera(mouse, camera);
 
 
+	let intersectsButton = raycaster.intersectObjects(buttons, false);
 
-	let intersects = raycaster.intersectObjects(clickableModels, false);
+	//NOTE: TEST FOR BUTTONS
+	if (!transitioning && intersectsButton.length > 0) {
 
-	if (!transitioning && intersects.length > 0) {
+		let targetName = GetButtonName(intersectsButton[0].object);
+		let desiredTarget = boxes[targetName];
 
-		let desiredTarget = boxes[intersects[0].object.name];
+		FindPathFromNode(desiredTarget);
+		console.log(targetName);
 
-		if (desiredTarget && desiredTarget !== activeNode) {
-
-			if (activeNode === null || desiredTarget.name in activeNode.connections) {
-
-				targetNode = desiredTarget;
-				targetPanel = intersects[0].object.name;
-				HideAllPanels();
-
-				startingPosition.x = cube.position.x;
-				startingPosition.y = cube.position.y;
-
-				targetPosition.x = intersects[0].object.position.x;
-				targetPosition.y = -intersects[0].object.position.z;
-				currentTransitionTime = 0;
-
-			} else if (!(desiredTarget.name in activeNode.connections)) {
-
-				let paths = FindPaths(desiredTarget, [activeNode]);
-				let currentPath = [];
-
-				for (let i = 0; i < paths.length; i++) {
-
-					if (currentPath.length === 0 || paths[i].length < currentPath.length) {
-
-						currentPath = paths[i];
-
-					}
-
-				}
-
-				currentPath.reverse();
-				currentPath.pop();
-
-				targetPath = currentPath;
-
-				targetNode = targetPath.pop();
-				targetPanel = targetNode.name;
-				HideAllPanels();
-
-				startingPosition.x = cube.position.x;
-				startingPosition.y = cube.position.y;
-
-				targetPosition.x = targetNode.box.position.x;
-				targetPosition.y = -targetNode.box.position.z;
-				currentTransitionTime = 0;
+	}
 
 
+	//NOTE: TEST FOR LOCATIONS ON MAP
+	let intersectsMap = raycaster.intersectObjects(clickableModels, false);
+	if (!transitioning && intersectsMap.length > 0) {
 
-				console.log(paths);
-				console.log(currentPath);
-				console.log(targetNode);
+		let desiredTarget = boxes[intersectsMap[0].object.name];
 
+		FindPathFromNode(desiredTarget);
 
-			}
-		}
+		//if (desiredTarget && desiredTarget !== activeNode) {
+		//
+		//	if (activeNode === null || desiredTarget.name in activeNode.connections) {
+		//
+		//		targetNode = desiredTarget;
+		//		targetPanel = intersectsMap[0].object.name;
+		//		HideAllPanels();
+		//
+		//		startingPosition.x = cube.position.x;
+		//		startingPosition.y = cube.position.y;
+		//
+		//		targetPosition.x = intersectsMap[0].object.position.x;
+		//		targetPosition.y = -intersectsMap[0].object.position.z;
+		//		currentTransitionTime = 0;
+		//
+		//	} else if (!(desiredTarget.name in activeNode.connections)) {
+		//
+		//		let paths = FindPaths(desiredTarget, [activeNode]);
+		//		let currentPath = [];
+		//
+		//		for (let i = 0; i < paths.length; i++) {
+		//
+		//			if (currentPath.length === 0 || paths[i].length < currentPath.length) {
+		//
+		//				currentPath = paths[i];
+		//
+		//			}
+		//
+		//		}
+		//
+		//		currentPath.reverse();
+		//		currentPath.pop();
+		//
+		//		targetPath = currentPath;
+		//
+		//		targetNode = targetPath.pop();
+		//		targetPanel = targetNode.name;
+		//		HideAllPanels();
+		//
+		//		startingPosition.x = cube.position.x;
+		//		startingPosition.y = cube.position.y;
+		//
+		//		targetPosition.x = targetNode.box.position.x;
+		//		targetPosition.y = -targetNode.box.position.z;
+		//		currentTransitionTime = 0;
+		//
+		//
+		//
+		//		console.log(paths);
+		//		console.log(currentPath);
+		//		console.log(targetNode);
+		//
+		//
+		//	}
+		//}
 
 	} else {
 		console.log("no click");
