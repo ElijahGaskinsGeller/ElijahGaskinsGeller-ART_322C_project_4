@@ -24,16 +24,22 @@ console.log(THREE);
 
 
 let scene = new THREE.Scene();
+let mapContainer = document.getElementById("map-container");
+let targetWidth = mapContainer.clientWidth;
+let targetHeight = window.innerHeight;
 
+console.log("target width: " + targetWidth);
+console.log("target height: " + targetHeight);
 
-let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+let camera = new THREE.PerspectiveCamera(75, targetWidth / targetHeight, 0.1, 7000);
 
-camera.position.z = 700;
+camera.position.z = 1000 * (targetHeight / targetWidth);
+console.log(camera.position.z);
 
 
 let renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+renderer.setSize(targetWidth, targetHeight);
+mapContainer.appendChild(renderer.domElement);
 
 
 //let controls = new OrbitControls(camera, renderer.domElement);
@@ -45,10 +51,7 @@ let mouse = new THREE.Vector2(1, 1);
 
 
 let loader = new FBXLoader();
-//let material_0 = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-//let material_1 = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-//let material_2 = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-//let material_3 = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+
 
 function PushConnections(boxName, connectionNames) {
 
@@ -118,10 +121,6 @@ let geometry = loader.load("../models/object_test_buttons.fbx", function(o) {
 
 	let models = o.children;
 
-	//models[0].material = material_0;
-	//models[1].material = material_1;
-	//models[2].material = material_2;
-	//models[3].material = material_3;
 
 	for (let i = 0; i < models.length; i++) {
 
@@ -166,21 +165,6 @@ let geometry = loader.load("../models/object_test_buttons.fbx", function(o) {
 	currentTransitionTime = 0;
 
 
-	//boxes["lower-left"].connections["lower-right"] = boxes["lower-right"];
-	//boxes["lower-left"].connections["upper-left"] = boxes["upper-left"];
-	//
-	//boxes["lower-right"].connections["upper-right"] = boxes["upper-right"];
-	//boxes["lower-right"].connections["lower-left"] = boxes["lower-left"];
-	//
-	//boxes["upper-left"].connections["lower-left"] = boxes["lower-left"];
-	//boxes["upper-left"].connections["upper-right"] = boxes["upper-right"];
-	//
-	//boxes["upper-right"].connections["lower-right"] = boxes["lower-right"];
-	//boxes["upper-right"].connections["upper-left"] = boxes["upper-left"];
-	//
-	//
-	console.log(boxes);
-
 
 	o.rotation.x = Math.PI / 2;
 
@@ -196,6 +180,8 @@ scene.add(cube);
 
 
 function HideAllPanels() {
+
+	//TODO: THIS WAS MADE TO SUPPORT MORE "DISPLAY" CLASSES.  EITHER IMPLEMENT MORE "DISPLAY" CLASSES OR REMOVE THIS
 
 	let currentPanels = document.getElementsByClassName("display");
 
@@ -227,7 +213,7 @@ function DisplayPannel(panelId) {
 	let panel = document.getElementById(panelId);
 
 	panel.classList.add("display");
-	panel.classList.add("display-" + panelId);
+	//panel.classList.add("display-" + panelId);
 
 
 }
@@ -361,8 +347,8 @@ function FindPathFromNode(node) {
 
 function OnPointerDown(e) {
 
-	mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-	mouse.y = - (e.clientY / window.innerHeight) * 2 + 1;
+	mouse.x = (e.clientX / targetWidth) * 2 - 1;
+	mouse.y = - (e.clientY / targetHeight) * 2 + 1;
 
 	raycaster.setFromCamera(mouse, camera);
 
@@ -376,7 +362,7 @@ function OnPointerDown(e) {
 		let desiredTarget = boxes[targetName];
 
 		FindPathFromNode(desiredTarget);
-		console.log(targetName);
+		//console.log(targetName);
 
 	}
 
@@ -389,62 +375,6 @@ function OnPointerDown(e) {
 
 		FindPathFromNode(desiredTarget);
 
-		//if (desiredTarget && desiredTarget !== activeNode) {
-		//
-		//	if (activeNode === null || desiredTarget.name in activeNode.connections) {
-		//
-		//		targetNode = desiredTarget;
-		//		targetPanel = intersectsMap[0].object.name;
-		//		HideAllPanels();
-		//
-		//		startingPosition.x = cube.position.x;
-		//		startingPosition.y = cube.position.y;
-		//
-		//		targetPosition.x = intersectsMap[0].object.position.x;
-		//		targetPosition.y = -intersectsMap[0].object.position.z;
-		//		currentTransitionTime = 0;
-		//
-		//	} else if (!(desiredTarget.name in activeNode.connections)) {
-		//
-		//		let paths = FindPaths(desiredTarget, [activeNode]);
-		//		let currentPath = [];
-		//
-		//		for (let i = 0; i < paths.length; i++) {
-		//
-		//			if (currentPath.length === 0 || paths[i].length < currentPath.length) {
-		//
-		//				currentPath = paths[i];
-		//
-		//			}
-		//
-		//		}
-		//
-		//		currentPath.reverse();
-		//		currentPath.pop();
-		//
-		//		targetPath = currentPath;
-		//
-		//		targetNode = targetPath.pop();
-		//		targetPanel = targetNode.name;
-		//		HideAllPanels();
-		//
-		//		startingPosition.x = cube.position.x;
-		//		startingPosition.y = cube.position.y;
-		//
-		//		targetPosition.x = targetNode.box.position.x;
-		//		targetPosition.y = -targetNode.box.position.z;
-		//		currentTransitionTime = 0;
-		//
-		//
-		//
-		//		console.log(paths);
-		//		console.log(currentPath);
-		//		console.log(targetNode);
-		//
-		//
-		//	}
-		//}
-
 	} else {
 		console.log("no click");
 	}
@@ -456,10 +386,16 @@ function OnPointerDown(e) {
 
 function OnWindowResize(e) {
 
-	camera.aspect = window.innerWidth / window.innerHeight;
+	targetWidth = mapContainer.clientWidth;
+	targetHeight = window.innerHeight;
+
+	camera.position.z = 1000 * (targetHeight / targetWidth);
+	console.log(camera.position.z);
+
+	camera.aspect = targetWidth / targetHeight;
 	camera.updateProjectionMatrix();
 
-	renderer.setSize(window.innerWidth, window.innerHeight);
+	renderer.setSize(targetWidth, targetHeight);
 
 }
 
@@ -509,7 +445,7 @@ function animate(time) {
 				activeNode = targetNode;
 
 				HideAllPanels();
-				//DisplayPannel(targetPanel);
+				DisplayPannel(targetPanel);
 
 			}
 

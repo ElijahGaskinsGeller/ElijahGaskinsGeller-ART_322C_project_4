@@ -9,72 +9,82 @@ canvas {
         overflow-clip-margin: content-box;
 }
 
+#map-container{
+
+        width:60%;
+
+}
+
+#panel-container{
+
+        width:45%;
+        height: 100%;
+        position: absolute;
+        top:0;
+        right: 0;
+
+        background: white;
+        display: flex;
+
+}
 
 .panel {
-        position: absolute;
-        height: 100px;
-        width: 100px;
+        margin: auto;
+        aspect-ratio: 1/1;
+        width: 95%;
         background: white;
 
+        display: none;
+        text-align: center;
 
-        transition: ease 100ms;
-}
+
+  }
 
 
 
 .display {
 
-        /*NOTE: this is just to mark the element in js*/
+        display: block;
 
 }
 
 
 #upper-left {
-
-        left: -100px;
-
+        background: blue;
 }
 
-.display-upper-left {
-
-        left: 0 !important;
-
+#upper-middle {
+        background: purple;
 }
-
 
 #upper-right {
-
-        right: -100px;
+        background: violet;
 }
 
-.display-upper-right {
 
-        right: 0 !important;
-
+#middle-left {
+        background: orange;
 }
+
+#middle-middle {
+        background: red;
+}
+
+#middle-right {
+        background: IndianRed;
+}
+
 
 #lower-left {
-
-        left: -100px;
-        bottom: 0;
-
+        background: green;
 }
 
-.display-lower-left {
-
-        left: 0 !important;
-
+#lower-middle {
+        background: cyan;
 }
 
 #lower-right {
-
-        right: -100px;
-        bottom: 0;
-
+        background: CornflowerBlue;
 }
 
-.display-lower-right {
 
-        right: 0 !important;
-
-}
