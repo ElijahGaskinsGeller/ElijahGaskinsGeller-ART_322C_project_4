@@ -1,5 +1,3 @@
-
-
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -23,26 +21,57 @@ function clamp(num, min, max) {
 console.log(THREE);
 
 
-let scene = new THREE.Scene();
+let mapScene = new THREE.Scene();
 let mapContainer = document.getElementById("map-container");
-let targetWidth = mapContainer.clientWidth;
-let targetHeight = window.innerHeight;
+let mapTargetWidth = mapContainer.clientWidth;
+let mapTargetHeight = window.innerHeight;
 
-console.log("target width: " + targetWidth);
-console.log("target height: " + targetHeight);
+let panelScene = new THREE.Scene();
+let panelContainer = document.getElementById("panel-container");
+let panelTargetWidth = panelContainer.clientWidth;
+let panelTargetHeight = window.innerHeight;
 
-let camera = new THREE.PerspectiveCamera(75, targetWidth / targetHeight, 0.1, 7000);
+let monitorScene = new THREE.Scene();
+let monitorWidth = 256;
+let monitorHeight = monitorWidth;
+monitorScene.background = new THREE.Color(0xff0000);
 
-camera.position.z = 1000 * (targetHeight / targetWidth);
-console.log(camera.position.z);
+let mapCamera = new THREE.PerspectiveCamera(75, mapTargetWidth / mapTargetHeight, 0.1, 7000);
+let panelCamera = new THREE.PerspectiveCamera(75, panelTargetWidth / panelTargetHeight, 0.1, 7000);
+let monitorCamera = new THREE.OrthographicCamera();
+
+mapCamera.position.z = 1000 * (mapTargetHeight / mapTargetWidth);
 
 
-let renderer = new THREE.WebGLRenderer();
-renderer.setSize(targetWidth, targetHeight);
-mapContainer.appendChild(renderer.domElement);
+let panelCameraZoomFactor = 300;
+panelCamera.position.x = 0;
+panelCamera.position.y = 300;
+panelCamera.position.z = panelCameraZoomFactor * (panelTargetHeight / panelTargetWidth);
+
+panelScene.background = new THREE.Color(0xff00ff);
 
 
-//let controls = new OrbitControls(camera, renderer.domElement);
+let mapRenderer = new THREE.WebGLRenderer();
+mapRenderer.setSize(mapTargetWidth, mapTargetHeight);
+mapContainer.appendChild(mapRenderer.domElement);
+
+let panelRenderer = new THREE.WebGLRenderer();
+panelRenderer.setSize(panelTargetWidth, panelTargetHeight);
+panelContainer.appendChild(panelRenderer.domElement);
+
+
+
+let monitorScreenTexture = new THREE.WebGLRenderTarget(monitorWidth, monitorHeight);
+let monitorScreenMaterial = new THREE.MeshBasicMaterial({ map: monitorScreenTexture.texture });
+
+
+//let monitorRenderer = new THREE.WebGLRenderer();
+//monitorRenderer.setSize(monitorWidth, monitorHeight);
+//document.body.appendChild(monitorRenderer.domElement);
+
+
+
+//let controls = new OrbitControls(panelCamera, panelRenderer.domElement);
 
 
 let raycaster = new THREE.Raycaster();
@@ -116,7 +145,7 @@ let buttonNodes = {};
 
 
 
-let geometry = loader.load("../models/object_test_buttons.fbx", function(o) {
+let mapGeometry = loader.load("../models/object_test_buttons.fbx", function(o) {
 	console.log(o);
 
 	let models = o.children;
@@ -155,7 +184,7 @@ let geometry = loader.load("../models/object_test_buttons.fbx", function(o) {
 
 	targetNode = boxes["middle-middle"];
 	targetPanel = "middle-middle";
-	HideAllPanels();
+	//HideAllPanels();
 
 	startingPosition.x = cube.position.x;
 	startingPosition.y = cube.position.y;
@@ -168,15 +197,64 @@ let geometry = loader.load("../models/object_test_buttons.fbx", function(o) {
 
 	o.rotation.x = Math.PI / 2;
 
-	scene.add(o);
+	mapScene.add(o);
 
 });
+
+
+let panelGeometry = loader.load("../models/cctv_test.fbx", function(o) {
+	console.log("panel");
+	console.log(o);
+
+	let defaultMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffffff) });
+
+	let children = o.children;
+
+	for (let i = 0; i < children.length; i++) {
+
+		let currentChild = children[i];
+
+		switch (currentChild.name) {
+
+			case ("Camera"): {
+
+
+			} break;
+
+			case ("monitor_screen"): {
+
+				currentChild.material = monitorScreenMaterial;
+				console.log(currentChild);
+
+			} break;
+
+
+			default: {
+
+				currentChild.material = defaultMat;
+
+
+			} break;
+
+
+		};
+
+	}
+
+	o.rotation.y = -Math.PI / 2;
+	panelScene.add(o);
+
+});
+
+
+
+
 
 let cube_geometry = new THREE.BoxGeometry(25, 25, 25);
 let material = new THREE.MeshBasicMaterial({ color: 0xff00ff });
 let cube = new THREE.Mesh(cube_geometry, material);
 cube.position.y = 10;
-scene.add(cube);
+mapScene.add(cube);
 
 
 function HideAllPanels() {
@@ -293,7 +371,7 @@ function FindPathFromNode(node) {
 
 			targetNode = node;
 			targetPanel = targetNode.name;
-			HideAllPanels();
+			//HideAllPanels();
 
 			startingPosition.x = cube.position.x;
 			startingPosition.y = cube.position.y;
@@ -324,7 +402,7 @@ function FindPathFromNode(node) {
 
 			targetNode = targetPath.pop();
 			targetPanel = targetNode.name;
-			HideAllPanels();
+			//HideAllPanels();
 
 			startingPosition.x = cube.position.x;
 			startingPosition.y = cube.position.y;
@@ -347,36 +425,44 @@ function FindPathFromNode(node) {
 
 function OnPointerDown(e) {
 
-	mouse.x = (e.clientX / targetWidth) * 2 - 1;
-	mouse.y = - (e.clientY / targetHeight) * 2 + 1;
+	if (e.srcElement === mapRenderer.domElement) {
+		console.log("map");
 
-	raycaster.setFromCamera(mouse, camera);
+		mouse.x = (e.clientX / mapTargetWidth) * 2 - 1;
+		mouse.y = - (e.clientY / mapTargetHeight) * 2 + 1;
 
-
-	let intersectsButton = raycaster.intersectObjects(buttons, false);
-
-	//NOTE: TEST FOR BUTTONS
-	if (!transitioning && intersectsButton.length > 0) {
-
-		let targetName = GetButtonName(intersectsButton[0].object);
-		let desiredTarget = boxes[targetName];
-
-		FindPathFromNode(desiredTarget);
-		//console.log(targetName);
-
-	}
+		raycaster.setFromCamera(mouse, mapCamera);
 
 
-	//NOTE: TEST FOR LOCATIONS ON MAP
-	let intersectsMap = raycaster.intersectObjects(clickableModels, false);
-	if (!transitioning && intersectsMap.length > 0) {
+		let intersectsButton = raycaster.intersectObjects(buttons, false);
 
-		let desiredTarget = boxes[intersectsMap[0].object.name];
+		//NOTE: TEST FOR BUTTONS
+		if (!transitioning && intersectsButton.length > 0) {
 
-		FindPathFromNode(desiredTarget);
+			let targetName = GetButtonName(intersectsButton[0].object);
+			let desiredTarget = boxes[targetName];
 
-	} else {
-		console.log("no click");
+			FindPathFromNode(desiredTarget);
+			//console.log(targetName);
+
+		}
+
+
+		//NOTE: TEST FOR LOCATIONS ON MAP
+		let intersectsMap = raycaster.intersectObjects(clickableModels, false);
+		if (!transitioning && intersectsMap.length > 0) {
+
+			let desiredTarget = boxes[intersectsMap[0].object.name];
+
+			FindPathFromNode(desiredTarget);
+
+		} else {
+			console.log("no click");
+		}
+	} else if (e.srcElement === panelRenderer.domElement) {
+
+		console.log("panels");
+
 	}
 
 
@@ -386,16 +472,30 @@ function OnPointerDown(e) {
 
 function OnWindowResize(e) {
 
-	targetWidth = mapContainer.clientWidth;
-	targetHeight = window.innerHeight;
+	mapTargetWidth = mapContainer.clientWidth;
+	mapTargetHeight = window.innerHeight;
 
-	camera.position.z = 1000 * (targetHeight / targetWidth);
-	console.log(camera.position.z);
+	mapCamera.position.z = 1000 * (mapTargetHeight / mapTargetWidth);
+	//console.log(mapCamera.position.z);
 
-	camera.aspect = targetWidth / targetHeight;
-	camera.updateProjectionMatrix();
+	mapCamera.aspect = mapTargetWidth / mapTargetHeight;
+	mapCamera.updateProjectionMatrix();
 
-	renderer.setSize(targetWidth, targetHeight);
+	mapRenderer.setSize(mapTargetWidth, mapTargetHeight);
+
+
+	panelTargetWidth = panelContainer.clientWidth;
+	panelTargetHeight = window.innerHeight;
+
+	panelCamera.position.z = panelCameraZoomFactor * (panelTargetHeight / panelTargetWidth);
+	console.log(panelCamera.position.z);
+
+	panelCamera.aspect = panelTargetWidth / panelTargetHeight;
+	panelCamera.updateProjectionMatrix();
+
+	panelRenderer.setSize(panelTargetWidth, panelTargetHeight);
+
+
 
 }
 
@@ -431,7 +531,7 @@ function animate(time) {
 			if (targetPath.length > 0) {
 				targetNode = targetPath.pop();
 				targetPanel = targetNode.name;
-				HideAllPanels();
+				//HideAllPanels();
 
 				startingPosition.x = cube.position.x;
 				startingPosition.y = cube.position.y;
@@ -444,8 +544,8 @@ function animate(time) {
 
 				activeNode = targetNode;
 
-				HideAllPanels();
-				DisplayPannel(targetPanel);
+				//HideAllPanels();
+				//DisplayPannel(targetPanel);
 
 			}
 
@@ -459,7 +559,18 @@ function animate(time) {
 	}
 
 
-	renderer.render(scene, camera);
+	//controls.update();
+
+	mapRenderer.render(mapScene, mapCamera);
+
+	panelRenderer.render(panelScene, panelCamera);
+
+	//panelRenderer.render(monitorScene, monitorCamera);
+
+	panelRenderer.setRenderTarget(monitorScreenTexture);
+	panelRenderer.render(monitorScene, monitorCamera);
+	panelRenderer.setRenderTarget(null);
+
 
 
 	requestAnimationFrame(animate);
