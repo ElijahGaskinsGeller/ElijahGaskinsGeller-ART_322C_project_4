@@ -133,7 +133,16 @@ let NAMES = {
 
 	lowerLeft: "lower-left",
 	lowerMiddle: "lower-middle",
-	lowerRight: "lower-right"
+	lowerRight: "lower-right",
+
+
+
+
+	monitorButton0: "monitor-button-0",
+	monitorButton1: "monitor-button-1",
+	monitorButton2: "monitor-button-2",
+	monitorButton3: "monitor-button-3",
+	monitorButton4: "monitor-button-4",
 
 };
 
@@ -202,6 +211,21 @@ let mapGeometry = loader.load("../models/object_test_buttons.fbx", function(o) {
 });
 
 
+let monitorButtonModels = [];
+let monitorButtons = {};
+
+function CreateMonitorButton(button, screenNumber) {
+
+	return {
+
+		button: button,
+		screenNumber
+
+	}
+
+}
+
+
 let panelGeometry = loader.load("../models/cctv_test.fbx", function(o) {
 	console.log("panel");
 	console.log(o);
@@ -214,32 +238,24 @@ let panelGeometry = loader.load("../models/cctv_test.fbx", function(o) {
 
 		let currentChild = children[i];
 
-		switch (currentChild.name) {
+		let newMaterial = new THREE.MeshBasicMaterial({ color: currentChild.material.color });
+		currentChild.material = newMaterial;
 
-			case ("Camera"): {
+		if (currentChild.name === "monitor_screen") {
+			currentChild.material = monitorScreenMaterial;
+		}
 
+		if (currentChild.name.includes("button")) {
 
-			} break;
+			monitorButtonModels.push(currentChild);
+			monitorButtons[currentChild.name] = CreateMonitorButton(currentChild, parseInt(currentChild.name.replace("monitor-button-", "")));
 
-			case ("monitor_screen"): {
-
-				currentChild.material = monitorScreenMaterial;
-				console.log(currentChild);
-
-			} break;
-
-
-			default: {
-
-				currentChild.material = defaultMat;
-
-
-			} break;
-
-
-		};
-
+		}
 	}
+
+
+
+	SetScreen(0);
 
 	o.rotation.y = -Math.PI / 2;
 	panelScene.add(o);
@@ -423,6 +439,49 @@ function FindPathFromNode(node) {
 }
 
 
+function SetScreen(screenNumber) {
+
+
+	switch (screenNumber) {
+
+		case (0): {
+
+			monitorScene.background = new THREE.Color(0x0000ff);
+
+		} break;
+
+
+		case (1): {
+
+			monitorScene.background = new THREE.Color(0xff00ff);
+
+		} break;
+
+
+		case (2): {
+
+			monitorScene.background = new THREE.Color(0xff0000);
+
+		} break;
+
+
+		case (3): {
+
+			monitorScene.background = new THREE.Color(0xffff00);
+
+		} break;
+
+		case (4): {
+
+			monitorScene.background = new THREE.Color(0x00ff00);
+
+		} break;
+
+	}
+
+}
+
+
 function OnPointerDown(e) {
 
 	if (e.srcElement === mapRenderer.domElement) {
@@ -430,6 +489,7 @@ function OnPointerDown(e) {
 
 		mouse.x = (e.clientX / mapTargetWidth) * 2 - 1;
 		mouse.y = - (e.clientY / mapTargetHeight) * 2 + 1;
+
 
 		raycaster.setFromCamera(mouse, mapCamera);
 
@@ -460,6 +520,26 @@ function OnPointerDown(e) {
 			console.log("no click");
 		}
 	} else if (e.srcElement === panelRenderer.domElement) {
+
+		console.log(e);
+
+		mouse.x = ((e.clientX - (window.innerWidth - panelTargetWidth)) / panelTargetWidth) * 2 - 1;
+		mouse.y = - (e.clientY / panelTargetHeight) * 2 + 1;
+
+
+		raycaster.setFromCamera(mouse, panelCamera);
+
+		let intersectsButton = raycaster.intersectObjects(monitorButtonModels, true);
+
+		if (intersectsButton.length > 0) {
+
+			let clickedModel = intersectsButton[0].object;
+
+			let clickedButton = monitorButtons[clickedModel.name];
+
+			SetScreen(clickedButton.screenNumber);
+
+		}
 
 		console.log("panels");
 
