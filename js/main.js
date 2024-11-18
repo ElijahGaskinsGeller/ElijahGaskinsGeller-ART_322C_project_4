@@ -17,6 +17,9 @@ function clamp(num, min, max) {
 };
 
 
+function easeOutSine(x) {
+	return Math.sin((x * Math.PI) / 2);
+}
 
 console.log(THREE);
 
@@ -75,7 +78,8 @@ let monitorScreenMaterial = new THREE.MeshBasicMaterial({ map: monitorScreenText
 
 
 let raycaster = new THREE.Raycaster();
-let mouse = new THREE.Vector2(1, 1);
+let mapMouseRelPos = new THREE.Vector2(0, 0);
+let panelMouseRelPos = new THREE.Vector2(0, 0);
 
 
 
@@ -313,14 +317,6 @@ function DisplayPannel(panelId) {
 }
 
 
-function OnMouseMove(e) {
-
-
-	mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-	mouse.y = - (e.clientY / window.innerHeight) * 2 + 1;
-
-}
-
 let targetPath = [];
 
 let targetPosition = new THREE.Vector2(cube.position.x, cube.position.y);
@@ -487,11 +483,11 @@ function OnPointerDown(e) {
 	if (e.srcElement === mapRenderer.domElement) {
 		console.log("map");
 
-		mouse.x = (e.clientX / mapTargetWidth) * 2 - 1;
-		mouse.y = - (e.clientY / mapTargetHeight) * 2 + 1;
+		mapMouseRelPos.x = (e.clientX / mapTargetWidth) * 2 - 1;
+		mapMouseRelPos.y = - (e.clientY / mapTargetHeight) * 2 + 1;
 
 
-		raycaster.setFromCamera(mouse, mapCamera);
+		raycaster.setFromCamera(mapMouseRelPos, mapCamera);
 
 
 		let intersectsButton = raycaster.intersectObjects(buttons, false);
@@ -523,11 +519,11 @@ function OnPointerDown(e) {
 
 		console.log(e);
 
-		mouse.x = ((e.clientX - (window.innerWidth - panelTargetWidth)) / panelTargetWidth) * 2 - 1;
-		mouse.y = - (e.clientY / panelTargetHeight) * 2 + 1;
+		panelMouseRelPos.x = ((e.clientX - (window.innerWidth - panelTargetWidth)) / panelTargetWidth) * 2 - 1;
+		panelMouseRelPos.y = - (e.clientY / panelTargetHeight) * 2 + 1;
 
 
-		raycaster.setFromCamera(mouse, panelCamera);
+		raycaster.setFromCamera(panelMouseRelPos, panelCamera);
 
 		let intersectsButton = raycaster.intersectObjects(monitorButtonModels, true);
 
@@ -545,6 +541,59 @@ function OnPointerDown(e) {
 
 	}
 
+
+
+}
+
+
+let panelRotationFactor = .25;
+let panelRotationDurration = .025;
+let panelRotationTimer = 0;
+
+let panelRotationStart = new THREE.Vector2();
+let panelRotationTarget = new THREE.Vector2();
+
+let panelCamOffsetX = .025;
+let panelCamOffsetY = .025;
+
+function OnMouseMove(e) {
+
+	mapMouseRelPos.x = (e.clientX / mapTargetWidth) * 2 - 1;
+	mapMouseRelPos.y = - (e.clientY / mapTargetHeight) * 2 + 1;
+
+
+	panelMouseRelPos.x = ((e.clientX - (window.innerWidth - panelTargetWidth)) / panelTargetWidth) * 2 - 1;
+	panelMouseRelPos.y = - (e.clientY / panelTargetHeight) * 2 + 1;
+
+
+	if (panelMouseRelPos.x >= -1 && panelMouseRelPos.x <= 1) {
+
+		panelRotationStart.x = panelCamera.rotation.x;
+		panelRotationStart.y = panelCamera.rotation.y;
+
+		panelRotationTarget.x = (panelCamOffsetX * panelMouseRelPos.y);
+		panelRotationTarget.y = -(panelCamOffsetY * panelMouseRelPos.x);
+
+
+		let panelRotationDistance = panelRotationStart.distanceTo(panelRotationTarget);
+
+		panelRotationDurration = panelRotationDistance / panelRotationFactor;
+		panelRotationTimer = panelRotationDurration;
+
+	} else if (panelCamera.rotation.x !== 0 || panelCamera.rotation.y !== 0) {
+
+		panelRotationStart.x = panelCamera.rotation.x;
+		panelRotationStart.y = panelCamera.rotation.y;
+
+		panelRotationTarget.x = 0;
+		panelRotationTarget.y = 0;
+
+		let panelRotationDistance = panelRotationStart.distanceTo(panelRotationTarget);
+
+		panelRotationDurration = panelRotationDistance / panelRotationFactor;
+		panelRotationTimer = panelRotationDurration;
+
+	}
 
 
 }
@@ -568,7 +617,7 @@ function OnWindowResize(e) {
 	panelTargetHeight = window.innerHeight;
 
 	panelCamera.position.z = panelCameraZoomFactor * (panelTargetHeight / panelTargetWidth);
-	console.log(panelCamera.position.z);
+	//console.log(panelCamera.position.z);
 
 	panelCamera.aspect = panelTargetWidth / panelTargetHeight;
 	panelCamera.updateProjectionMatrix();
@@ -639,13 +688,35 @@ function animate(time) {
 	}
 
 
+
+	if (panelRotationTimer > 0) {
+
+		panelRotationTimer -= deltaTime;
+
+
+		if (panelRotationTimer < 0) {
+
+			panelRotationTimer = 0;
+
+		}
+
+		let normalizedPanelRotationTimer = easeOutSine(inverseLerp(panelRotationDurration, 0, panelRotationTimer));
+
+
+		panelCamera.rotation.x = lerp(panelRotationStart.x, panelRotationTarget.x, normalizedPanelRotationTimer);
+		panelCamera.rotation.y = lerp(panelRotationStart.y, panelRotationTarget.y, normalizedPanelRotationTimer);
+
+
+	}
+
+
+
 	//controls.update();
 
 	mapRenderer.render(mapScene, mapCamera);
 
 	panelRenderer.render(panelScene, panelCamera);
 
-	//panelRenderer.render(monitorScene, monitorCamera);
 
 	panelRenderer.setRenderTarget(monitorScreenTexture);
 	panelRenderer.render(monitorScene, monitorCamera);
@@ -659,8 +730,8 @@ function animate(time) {
 
 
 window.addEventListener("resize", OnWindowResize);
-document.addEventListener("mousemove", OnMouseMove);
 document.addEventListener("pointerdown", OnPointerDown);
+document.addEventListener("mousemove", OnMouseMove);
 
 requestAnimationFrame(animate);
 
