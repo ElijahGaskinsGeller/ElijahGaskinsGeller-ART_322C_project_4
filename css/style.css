@@ -9,18 +9,18 @@ canvas {
         overflow-clip-margin: content-box;
 }
 
-#map-container{
+#map-container {
 
-        width:60%;
+        width: 55%;
 
 }
 
-#panel-container{
+#panel-container {
 
-        width:45%;
+        width: 45%;
         height: 100%;
         position: absolute;
-        top:0;
+        top: 0;
         right: 0;
 
         background: white;
@@ -38,7 +38,7 @@ canvas {
         text-align: center;
 
 
-  }
+}
 
 
 
@@ -86,5 +86,3 @@ canvas {
 #lower-right {
         background: CornflowerBlue;
 }
-
-

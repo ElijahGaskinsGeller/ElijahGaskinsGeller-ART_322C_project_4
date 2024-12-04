@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 
@@ -39,11 +40,16 @@ let monitorWidth = 256;
 let monitorHeight = monitorWidth;
 monitorScene.background = new THREE.Color(0xff0000);
 
-let mapCamera = new THREE.PerspectiveCamera(75, mapTargetWidth / mapTargetHeight, 0.1, 7000);
+//let mapCamera = new THREE.PerspectiveCamera(75, mapTargetWidth / mapTargetHeight, 0.1, 7000);
+let mapCameraZoomFactor = 72;
+let frustumSize = mapCameraZoomFactor * (mapTargetHeight / mapTargetWidth);
+let aspect = mapTargetWidth / mapTargetHeight;
+let mapCamera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 0.1, 2000);
 let panelCamera = new THREE.PerspectiveCamera(75, panelTargetWidth / panelTargetHeight, 0.1, 7000);
 let monitorCamera = new THREE.OrthographicCamera();
 
-mapCamera.position.z = 1000 * (mapTargetHeight / mapTargetWidth);
+mapCamera.position.y = 15;
+//mapCamera.position.z = mapCameraZoomFactor * (mapTargetHeight / mapTargetWidth);
 
 
 let panelCameraZoomFactor = 300;
@@ -74,8 +80,12 @@ let monitorScreenMaterial = new THREE.MeshBasicMaterial({ map: monitorScreenText
 
 
 
-//let controls = new OrbitControls(panelCamera, panelRenderer.domElement);
+let mapControls = new OrbitControls(mapCamera, mapRenderer.domElement);
+mapControls.enableRotate = false;
 
+//let panelControls = new OrbitControls(panelCamera, panelRenderer.domElement);
+//panelControls.enableRotate = false;
+//panelControls.enablePan = false;
 
 let raycaster = new THREE.Raycaster();
 let mapMouseRelPos = new THREE.Vector2(0, 0);
@@ -83,7 +93,8 @@ let panelMouseRelPos = new THREE.Vector2(0, 0);
 
 
 
-let loader = new FBXLoader();
+let fbxLoader = new FBXLoader();
+let gltfLoader = new GLTFLoader();
 
 
 function PushConnections(boxName, connectionNames) {
@@ -109,35 +120,55 @@ function CreateBoxNode(name, box, connections) {
 
 }
 
-function CreateButtonNode(name, button) {
+function CreateButtonNode(name, button, node) {
 
 	return {
 
 		name: name,
-		button: button
+		button: button,
+		node: node
 
 	}
 
 }
 
 function GetButtonName(button) {
-	let buttonName = button.name.replace("button-", "");
+	let buttonName = button.name.replace("button_", "dest_");
 	return buttonName;
 }
 
 let NAMES = {
 
-	upperLeft: "upper-left",
-	upperMiddle: "upper-middle",
-	upperRight: "upper-right",
+	destFood: "dest_food",
+	destBlue: "dest_blue",
+	destPurple: "dest_purple",
+	destOrange: "dest_orange",
+	destYellow: "dest_yellow",
+	destViolet: "dest_violet",
 
-	middleLeft: "middle-left",
-	middleMiddle: "middle-middle",
-	middleRight: "middle-right",
+	link0: "link_0",
+	link1: "link_1",
+	link2: "link_2",
+	link3: "link_3",
+	link4: "link_4",
+	link5: "link_5",
+	link6: "link_6",
+	link7: "link_7",
+	link8: "link_8",
+	link9: "link_9",
 
-	lowerLeft: "lower-left",
-	lowerMiddle: "lower-middle",
-	lowerRight: "lower-right",
+
+	//upperLeft: "upper-left",
+	//upperMiddle: "upper-middle",
+	//upperRight: "upper-right",
+
+	//middleLeft: "middle-left",
+	//middleMiddle: "middle-middle",
+	//middleRight: "middle-right",
+
+	//lowerLeft: "lower-left",
+	//lowerMiddle: "lower-middle",
+	//lowerRight: "lower-right",
 
 
 
@@ -156,64 +187,174 @@ let clickableModels = [];
 let buttons = [];
 let buttonNodes = {};
 
+let cube_geometry = new THREE.BoxGeometry(25, 25, 25);
+let material = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+let character = new THREE.Mesh(cube_geometry, material);
 
+let mapGeometry = gltfLoader.load("../models/interactive_scene.glb", function(o) {
 
-let mapGeometry = loader.load("../models/object_test_buttons.fbx", function(o) {
 	console.log(o);
 
-	let models = o.children;
+	let elements = o.scene.children;
+
+	for (let i = 0; i < elements.length; i++) {
+
+		let currentElement = elements[i];
 
 
-	for (let i = 0; i < models.length; i++) {
+		if (currentElement.name !== "bg") {
 
-		let currentModel = models[i];
-		currentModel.material = new THREE.MeshBasicMaterial({ color: currentModel.material.color });
 
-		if (currentModel.name.includes("button")) {
+			currentElement.material = new THREE.MeshBasicMaterial({ color: currentElement.material.color });
 
-			let buttonName = GetButtonName(currentModel);
-			buttonNodes[buttonName] = CreateButtonNode(buttonName, currentModel);
-			buttons.push(currentModel);
+			currentElement.material.transparent = true;
+			currentElement.material.opacity = 0;
 
-		} else if (currentModel.name.charAt(0) !== "_") {
-			boxes[currentModel.name] = CreateBoxNode(currentModel.name, currentModel, {});
-			clickableModels.push(currentModel);
+			if (currentElement.name.includes("dest") || currentElement.name.includes("link")) {
+
+				boxes[currentElement.name] = CreateBoxNode(currentElement.name, currentElement, {});
+				clickableModels.push(currentElement);
+
+			}
+
+			if (currentElement.name.includes("button")) {
+
+
+				let buttonName = GetButtonName(currentElement);
+				buttonNodes[buttonName] = CreateButtonNode(buttonName, currentElement, null);
+				buttons.push(currentElement);
+
+			}
+
+			//TODO: this will be img
+			if (currentElement.name === "char") {
+
+				character = currentElement;
+				currentElement.material.opacity = 1;
+
+			}
+
 		}
+		//currentElement.scale.x = 100;
+		//currentElement.scale.z = 100;
+		//currentElement.rotation.x = Math.PI / 2;
+		//
+		//mapScene.add(currentElement);
+		//
+		//console.log(currentElement);
 
 	}
 
+	//for (let i = 0; i < buttons.length; i++) {
+	//
+	//	buttons[i].parent.remove(buttons[i]);
+	//
+	//}
 
-	PushConnections(NAMES.upperLeft, [NAMES.upperMiddle, NAMES.middleLeft]);
-	PushConnections(NAMES.upperMiddle, [NAMES.upperLeft, NAMES.upperRight, NAMES.middleMiddle])
-	PushConnections(NAMES.upperRight, [NAMES.upperMiddle])
+	PushConnections(NAMES.destFood, [NAMES.link0, NAMES.link2]);
+	PushConnections(NAMES.destBlue, [NAMES.link2]);
+	PushConnections(NAMES.destPurple, [NAMES.link9]);
+	PushConnections(NAMES.destYellow, [NAMES.link5]);
+	PushConnections(NAMES.destViolet, [NAMES.link6]);
+	PushConnections(NAMES.destOrange, [NAMES.link7]);
 
-	PushConnections(NAMES.middleLeft, [NAMES.upperLeft, NAMES.lowerLeft])
-	PushConnections(NAMES.middleMiddle, [NAMES.upperMiddle, NAMES.middleRight, NAMES.lowerMiddle])
-	PushConnections(NAMES.middleRight, [NAMES.middleMiddle, NAMES.lowerRight])
+	PushConnections(NAMES.link0, [NAMES.destFood, NAMES.link7, NAMES.link9]);
+	PushConnections(NAMES.link1, [NAMES.link2, NAMES.link9]);
+	PushConnections(NAMES.link2, [NAMES.destBlue, NAMES.destFood, NAMES.link1, NAMES.link3]);
+	PushConnections(NAMES.link3, [NAMES.link2, NAMES.link4]);
+	PushConnections(NAMES.link4, [NAMES.link3, NAMES.link5]);
+	PushConnections(NAMES.link5, [NAMES.destYellow, NAMES.link4, NAMES.link8]);
+	PushConnections(NAMES.link6, [NAMES.destViolet, NAMES.link8]);
+	PushConnections(NAMES.link7, [NAMES.destOrange, NAMES.link0]);
+	PushConnections(NAMES.link8, [NAMES.link5, NAMES.link6]);
+	PushConnections(NAMES.link9, [NAMES.destPurple, NAMES.link1, NAMES.link0]);
 
-	PushConnections(NAMES.lowerLeft, [NAMES.middleLeft])
-	PushConnections(NAMES.lowerMiddle, [NAMES.middleMiddle, NAMES.lowerRight])
-	PushConnections(NAMES.lowerRight, [NAMES.lowerMiddle, NAMES.middleRight])
+	targetNode = boxes[NAMES.destFood];
+	targetPanel = NAMES.destFood;
 
-	targetNode = boxes["middle-middle"];
-	targetPanel = "middle-middle";
-	//HideAllPanels();
 
-	startingPosition.x = cube.position.x;
-	startingPosition.y = cube.position.y;
+
+	//startingPosition.x = 0;
+	//startingPosition.y = 0;
+	//targetPosition.x = .1;
+	//targetPosition.y = -.1;
+
+	//NOTE: INVERSE Y
+	//NOTE: USE Z INSTEAD OF Y WHEN ON CHARACTER
+
+	startingPosition.x = character.position.x;
+	startingPosition.y = -character.position.z;
 
 	targetPosition.x = targetNode.box.position.x;
-	targetPosition.y = -targetNode.box.position.z;
-	currentTransitionTime = 0;
+	targetPosition.y = targetNode.box.position.z;
+	currentTransitionTime = transitionDuration * .9;
 
 
+	o.scene.scale.x = 100;
+	o.scene.scale.z = 100;
+	//o.scene.rotation.x = Math.PI / 2;
 
-	o.rotation.x = Math.PI / 2;
 
-	mapScene.add(o);
-
+	mapScene = o.scene;
 });
 
+
+//let mapGeometry = loader.load("../models/object_test_buttons.fbx", function(o) {
+//	console.log(o);
+//
+//	let models = o.children;
+//
+//
+//	for (let i = 0; i < models.length; i++) {
+//
+//		let currentModel = models[i];
+//		currentModel.material = new THREE.MeshBasicMaterial({ color: currentModel.material.color });
+//
+//		if (currentModel.name.includes("button")) {
+//
+//			let buttonName = GetButtonName(currentModel);
+//			buttonNodes[buttonName] = CreateButtonNode(buttonName, currentModel);
+//			buttons.push(currentModel);
+//
+//		} else if (currentModel.name.charAt(0) !== "_") {
+//			boxes[currentModel.name] = CreateBoxNode(currentModel.name, currentModel, {});
+//			clickableModels.push(currentModel);
+//		}
+//
+//	}
+//
+//
+//	PushConnections(NAMES.upperLeft, [NAMES.upperMiddle, NAMES.middleLeft]);
+//	PushConnections(NAMES.upperMiddle, [NAMES.upperLeft, NAMES.upperRight, NAMES.middleMiddle])
+//	PushConnections(NAMES.upperRight, [NAMES.upperMiddle])
+//
+//	PushConnections(NAMES.middleLeft, [NAMES.upperLeft, NAMES.lowerLeft])
+//	PushConnections(NAMES.middleMiddle, [NAMES.upperMiddle, NAMES.middleRight, NAMES.lowerMiddle])
+//	PushConnections(NAMES.middleRight, [NAMES.middleMiddle, NAMES.lowerRight])
+//
+//	PushConnections(NAMES.lowerLeft, [NAMES.middleLeft])
+//	PushConnections(NAMES.lowerMiddle, [NAMES.middleMiddle, NAMES.lowerRight])
+//	PushConnections(NAMES.lowerRight, [NAMES.lowerMiddle, NAMES.middleRight])
+//
+//	targetNode = boxes["middle-middle"];
+//	targetPanel = "middle-middle";
+//	//HideAllPanels();
+//
+//	startingPosition.x = cube.position.x;
+//	startingPosition.y = cube.position.y;
+//
+//	targetPosition.x = targetNode.box.position.x;
+//	targetPosition.y = -targetNode.box.position.z;
+//	currentTransitionTime = 0;
+//
+//
+//
+//	o.rotation.x = Math.PI / 2;
+//
+//	mapScene.add(o);
+//
+//});
+//
 
 let monitorButtonModels = [];
 let monitorButtons = {};
@@ -230,7 +371,7 @@ function CreateMonitorButton(button, screenNumber) {
 }
 
 
-let panelGeometry = loader.load("../models/cctv_test.fbx", function(o) {
+let panelGeometry = fbxLoader.load("../models/cctv_test.fbx", function(o) {
 	console.log("panel");
 	console.log(o);
 
@@ -270,11 +411,13 @@ let panelGeometry = loader.load("../models/cctv_test.fbx", function(o) {
 
 
 
-let cube_geometry = new THREE.BoxGeometry(25, 25, 25);
-let material = new THREE.MeshBasicMaterial({ color: 0xff00ff });
-let cube = new THREE.Mesh(cube_geometry, material);
-cube.position.y = 10;
-mapScene.add(cube);
+//let test_geometry = new THREE.BoxGeometry(25, 25, 25);
+//let test_material = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+//let test = new THREE.Mesh(cube_geometry, material);
+//character.position.x = 1;
+//character.position.y = 0;
+//character.position.z = 0;
+//mapScene.add(test);
 
 
 function HideAllPanels() {
@@ -319,13 +462,13 @@ function DisplayPannel(panelId) {
 
 let targetPath = [];
 
-let targetPosition = new THREE.Vector2(cube.position.x, cube.position.y);
-let startingPosition = new THREE.Vector2(cube.position.x, cube.position.y);
+let targetPosition = new THREE.Vector2(character.position.x, character.position.z);
+let startingPosition = new THREE.Vector2(character.position.x, character.position.z);
 let targetPanel = "";
 let activeNode = null;
 let targetNode = null;
 
-let pathCap = 6;
+let pathCap = 15;
 
 //NOTE: to start send in currentNode in array
 function FindPaths(target, path) {
@@ -385,11 +528,11 @@ function FindPathFromNode(node) {
 			targetPanel = targetNode.name;
 			//HideAllPanels();
 
-			startingPosition.x = cube.position.x;
-			startingPosition.y = cube.position.y;
+			startingPosition.x = character.position.x;
+			startingPosition.y = character.position.z;
 
 			targetPosition.x = targetNode.box.position.x;
-			targetPosition.y = -targetNode.box.position.z;
+			targetPosition.y = targetNode.box.position.z;
 			currentTransitionTime = 0;
 
 		} else if (!(node.name in activeNode.connections)) {
@@ -413,14 +556,18 @@ function FindPathFromNode(node) {
 			targetPath = currentPath;
 
 			targetNode = targetPath.pop();
+			if (!targetNode) {
+				console.log("AHHH!");
+				console.log(node);
+			}
 			targetPanel = targetNode.name;
 			//HideAllPanels();
 
-			startingPosition.x = cube.position.x;
-			startingPosition.y = cube.position.y;
+			startingPosition.x = character.position.x;
+			startingPosition.y = character.position.z;
 
 			targetPosition.x = targetNode.box.position.x;
-			targetPosition.y = -targetNode.box.position.z;
+			targetPosition.y = targetNode.box.position.z;
 			currentTransitionTime = 0;
 
 
@@ -479,6 +626,9 @@ function SetScreen(screenNumber) {
 
 
 function OnPointerDown(e) {
+	if (e.button !== 0) {
+		return;
+	}
 
 	if (e.srcElement === mapRenderer.domElement) {
 		console.log("map");
@@ -486,20 +636,21 @@ function OnPointerDown(e) {
 		mapMouseRelPos.x = (e.clientX / mapTargetWidth) * 2 - 1;
 		mapMouseRelPos.y = - (e.clientY / mapTargetHeight) * 2 + 1;
 
-
 		raycaster.setFromCamera(mapMouseRelPos, mapCamera);
 
 
 		let intersectsButton = raycaster.intersectObjects(buttons, false);
 
+		console.log(intersectsButton);
+		console.log(buttons);
 		//NOTE: TEST FOR BUTTONS
 		if (!transitioning && intersectsButton.length > 0) {
+
 
 			let targetName = GetButtonName(intersectsButton[0].object);
 			let desiredTarget = boxes[targetName];
 
 			FindPathFromNode(desiredTarget);
-			//console.log(targetName);
 
 		}
 
@@ -604,7 +755,17 @@ function OnWindowResize(e) {
 	mapTargetWidth = mapContainer.clientWidth;
 	mapTargetHeight = window.innerHeight;
 
-	mapCamera.position.z = 1000 * (mapTargetHeight / mapTargetWidth);
+	frustumSize = mapCameraZoomFactor * (mapTargetHeight / mapTargetWidth);
+	aspect = mapTargetWidth / mapTargetHeight;
+
+	//mapCamera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 0.1, 2000);
+	//
+	mapCamera.left = frustumSize * aspect / - 2;
+	mapCamera.right = frustumSize * aspect / 2;
+	mapCamera.top = frustumSize / 2;
+	mapCamera.bottom = frustumSize / - 2;
+
+	//mapCamera.position.z = mapCameraZoomFactor * (mapTargetHeight / mapTargetWidth);
 	//console.log(mapCamera.position.z);
 
 	mapCamera.aspect = mapTargetWidth / mapTargetHeight;
@@ -642,13 +803,13 @@ function animate(time) {
 	lastTime = time;
 
 
-	if (cube.position.x !== targetPosition.x || cube.position.y !== targetPosition.y) {
+	if (character.position.x !== targetPosition.x || character.position.z !== targetPosition.y) {
 
 
 		let currentLerpTime = clamp(inverseLerp(0, transitionDuration, currentTransitionTime), 0, 1);
 
-		cube.position.x = lerp(startingPosition.x, targetPosition.x, currentLerpTime);
-		cube.position.y = lerp(startingPosition.y, targetPosition.y, currentLerpTime);
+		character.position.x = lerp(startingPosition.x, targetPosition.x, currentLerpTime);
+		character.position.z = lerp(startingPosition.y, targetPosition.y, currentLerpTime);
 
 		currentTransitionTime += deltaTime;
 
@@ -662,11 +823,11 @@ function animate(time) {
 				targetPanel = targetNode.name;
 				//HideAllPanels();
 
-				startingPosition.x = cube.position.x;
-				startingPosition.y = cube.position.y;
+				startingPosition.x = character.position.x;
+				startingPosition.y = character.position.z;
 
 				targetPosition.x = targetNode.box.position.x;
-				targetPosition.y = -targetNode.box.position.z;
+				targetPosition.y = targetNode.box.position.z;
 				currentTransitionTime = 0;
 
 			} else {
