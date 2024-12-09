@@ -193,7 +193,7 @@ let cube_geometry = new THREE.BoxGeometry(25, 25, 25);
 let material = new THREE.MeshBasicMaterial({ color: 0xff00ff });
 let character = new THREE.Mesh(cube_geometry, material);
 
-let mapGeometry = gltfLoader.load("../models/interactive_scene.glb", function(o) {
+let mapGeometry = gltfLoader.load("./models/interactive_scene.glb", function(o) {
 
 	console.log(o);
 
@@ -381,7 +381,7 @@ function CreateMonitorButton(button, screenNumber) {
 }
 
 
-let panelGeometry = gltfLoader.load("../models/cctv.glb", function(o) {
+let panelGeometry = gltfLoader.load("./models/cctv.glb", function(o) {
 	console.log("panel");
 	console.log(o);
 
