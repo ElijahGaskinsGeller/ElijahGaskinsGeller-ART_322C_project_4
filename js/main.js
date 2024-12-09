@@ -41,10 +41,11 @@ let monitorHeight = monitorWidth;
 monitorScene.background = new THREE.Color(0xff0000);
 
 //let mapCamera = new THREE.PerspectiveCamera(75, mapTargetWidth / mapTargetHeight, 0.1, 7000);
-let mapCameraZoomFactor = 72;
+let mapCameraZoomFactor = 50;
 let frustumSize = mapCameraZoomFactor * (mapTargetHeight / mapTargetWidth);
 let aspect = mapTargetWidth / mapTargetHeight;
 let mapCamera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 0.1, 2000);
+
 let panelCamera = new THREE.PerspectiveCamera(75, panelTargetWidth / panelTargetHeight, 0.1, 7000);
 let monitorCamera = new THREE.OrthographicCamera();
 
@@ -57,7 +58,7 @@ panelCamera.position.x = 0;
 panelCamera.position.y = 300;
 panelCamera.position.z = panelCameraZoomFactor * (panelTargetHeight / panelTargetWidth);
 
-panelScene.background = new THREE.Color(0xff00ff);
+panelScene.background = new THREE.Color(0xafc7a7);
 
 
 let mapRenderer = new THREE.WebGLRenderer();
@@ -70,8 +71,8 @@ panelContainer.appendChild(panelRenderer.domElement);
 
 
 
-let monitorScreenTexture = new THREE.WebGLRenderTarget(monitorWidth, monitorHeight);
-let monitorScreenMaterial = new THREE.MeshBasicMaterial({ map: monitorScreenTexture.texture });
+//let monitorScreenTexture = new THREE.WebGLRenderTarget(monitorWidth, monitorHeight);
+let monitorScreenMaterial = new THREE.MeshBasicMaterial({ color: 0x1d1e1f });
 
 
 //let monitorRenderer = new THREE.WebGLRenderer();
@@ -95,6 +96,7 @@ let panelMouseRelPos = new THREE.Vector2(0, 0);
 
 let fbxLoader = new FBXLoader();
 let gltfLoader = new GLTFLoader();
+let textureLoader = new THREE.TextureLoader();
 
 
 function PushConnections(boxName, connectionNames) {
@@ -202,7 +204,7 @@ let mapGeometry = gltfLoader.load("../models/interactive_scene.glb", function(o)
 		let currentElement = elements[i];
 
 
-		if (currentElement.name !== "bg") {
+		if (currentElement.name !== "bg" && currentElement.name !== "char") {
 
 
 			currentElement.material = new THREE.MeshBasicMaterial({ color: currentElement.material.color });
@@ -229,10 +231,18 @@ let mapGeometry = gltfLoader.load("../models/interactive_scene.glb", function(o)
 			//TODO: this will be img
 			if (currentElement.name === "char") {
 
-				character = currentElement;
 				currentElement.material.opacity = 1;
 
 			}
+
+		} else if (currentElement.name === "bg") {
+
+			currentElement.material.transparent = true;
+
+		} else {
+
+			character = currentElement;
+			currentElement.material.transparent = true;
 
 		}
 		//currentElement.scale.x = 100;
@@ -371,20 +381,24 @@ function CreateMonitorButton(button, screenNumber) {
 }
 
 
-let panelGeometry = fbxLoader.load("../models/cctv_test.fbx", function(o) {
+let panelGeometry = gltfLoader.load("../models/cctv.glb", function(o) {
 	console.log("panel");
 	console.log(o);
 
 	let defaultMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffffff) });
 
-	let children = o.children;
+	let children = o.scene.children;
 
 	for (let i = 0; i < children.length; i++) {
 
 		let currentChild = children[i];
 
-		let newMaterial = new THREE.MeshBasicMaterial({ color: currentChild.material.color });
-		currentChild.material = newMaterial;
+
+
+		if (!currentChild.name.includes("img")) {
+			let newMaterial = new THREE.MeshBasicMaterial({ color: currentChild.material.color });
+			currentChild.material = newMaterial;
+		}
 
 		if (currentChild.name === "monitor_screen") {
 			currentChild.material = monitorScreenMaterial;
@@ -394,6 +408,7 @@ let panelGeometry = fbxLoader.load("../models/cctv_test.fbx", function(o) {
 
 			monitorButtonModels.push(currentChild);
 			monitorButtons[currentChild.name] = CreateMonitorButton(currentChild, parseInt(currentChild.name.replace("monitor-button-", "")));
+			console.log(monitorButtons[currentChild.name]);
 
 		}
 	}
@@ -402,8 +417,11 @@ let panelGeometry = fbxLoader.load("../models/cctv_test.fbx", function(o) {
 
 	SetScreen(0);
 
-	o.rotation.y = -Math.PI / 2;
-	panelScene.add(o);
+	o.scene.rotation.y = -Math.PI / 2;
+	o.scene.scale.x = 100;
+	o.scene.scale.y = 100;
+	o.scene.scale.z = 100;
+	panelScene.add(o.scene);
 
 });
 
@@ -419,6 +437,43 @@ let panelGeometry = fbxLoader.load("../models/cctv_test.fbx", function(o) {
 //character.position.z = 0;
 //mapScene.add(test);
 
+let cctvEmpty = [null, null, null, null, null, null];
+let cctvActive = [null, null, null, null, null, null];
+
+//textureLoader.load("../models/textures/cctv_footage/cctv_no_signal.jpg", function(t) {
+//	cctvEmpty[0] = t;
+//	monitorScreenMaterial.map = t;
+//});
+//
+//textureLoader.load("../models/textures/cctv_footage/0.png", function(t) {
+//	cctvEmpty[0] = t;
+//	monitorScreenMaterial.map = t;
+//});
+//
+//textureLoader.load("../models/textures/cctv_footage/1.png", function(t) {
+//	cctvEmpty[1] = t;
+//	cctvEmpty.push(t);
+//});
+//
+//textureLoader.load("../models/textures/cctv_footage/2.png", function(t) {
+//	cctvEmpty[2] = t;
+//	cctvEmpty.push(t);
+//});
+//
+//textureLoader.load("../models/textures/cctv_footage/3.png", function(t) {
+//	cctvEmpty[3] = t;
+//	cctvEmpty.push(t);
+//});
+//
+//textureLoader.load("../models/textures/cctv_footage/4.png", function(t) {
+//	cctvEmpty[4] = t;
+//	cctvEmpty.push(t);
+//});
+//
+//textureLoader.load("../models/textures/cctv_footage/5.png", function(t) {
+//	cctvEmpty[5] = t;
+//	cctvEmpty.push(t);
+//});
 
 function HideAllPanels() {
 
@@ -589,36 +644,48 @@ function SetScreen(screenNumber) {
 
 		case (0): {
 
-			monitorScene.background = new THREE.Color(0x0000ff);
+			monitorScreenMaterial.map = cctvEmpty[0];
+			//monitorScene.background = new THREE.Color(0x0000ff);
 
 		} break;
 
 
 		case (1): {
 
-			monitorScene.background = new THREE.Color(0xff00ff);
+			monitorScreenMaterial.map = cctvEmpty[1];
+			//monitorScene.background = new THREE.Color(0xff00ff);
 
 		} break;
 
 
 		case (2): {
 
-			monitorScene.background = new THREE.Color(0xff0000);
+			monitorScreenMaterial.map = cctvEmpty[2];
+			//monitorScene.background = new THREE.Color(0xff0000);
 
 		} break;
 
 
 		case (3): {
 
-			monitorScene.background = new THREE.Color(0xffff00);
+			monitorScreenMaterial.map = cctvEmpty[3];
+			//monitorScene.background = new THREE.Color(0xffff00);
 
 		} break;
 
 		case (4): {
 
-			monitorScene.background = new THREE.Color(0x00ff00);
+			monitorScreenMaterial.map = cctvEmpty[4];
+			//monitorScene.background = new THREE.Color(0x00ff00);
 
 		} break;
+
+		case (5): {
+
+			monitorScreenMaterial.map = cctvEmpty[5];
+			//monitorScene.background = new THREE.Color(0x00ffff);
+
+		}
 
 	}
 
@@ -684,7 +751,7 @@ function OnPointerDown(e) {
 
 			let clickedButton = monitorButtons[clickedModel.name];
 
-			SetScreen(clickedButton.screenNumber);
+			//SetScreen(clickedButton.screenNumber);
 
 		}
 
@@ -879,9 +946,9 @@ function animate(time) {
 	panelRenderer.render(panelScene, panelCamera);
 
 
-	panelRenderer.setRenderTarget(monitorScreenTexture);
-	panelRenderer.render(monitorScene, monitorCamera);
-	panelRenderer.setRenderTarget(null);
+	//panelRenderer.setRenderTarget(monitorScreenTexture);
+	//panelRenderer.render(monitorScene, monitorCamera);
+	//panelRenderer.setRenderTarget(null);
 
 
 
